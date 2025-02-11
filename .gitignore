@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+.DS_Store
 Auswertung.html
 Auswertung.Rmd
 Publish.sh
