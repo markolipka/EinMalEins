@@ -247,7 +247,7 @@ server <- function(input, output, session) {
           
           update_stats(Sys.time())
           output$dynamicUI <- renderUI({
-              plotOutput("statPlot", height = "80vh") # volle Screen-Höhe ausnutzen
+              plotOutput("statPlot", height = "60vh") # volle Screen-Höhe ausnutzen
           })
           
         } else { # falls ein falsches Ergebnis geklickt:
