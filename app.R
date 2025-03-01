@@ -199,7 +199,7 @@ server <- function(input, output, session) {
                              limits = c(0, 1),
                              na.value = "snow") +
         geom_point(aes(alpha = mittl_dauer), 
-                   size = 15, shape = "⏱") +
+                   size = 15, shape = "⏱", family = "Lucida Sans Unicode") +
         scale_alpha_continuous(limits = c(3, 10), range = c(0, 1),
                                oob = scales::squish, 
                                na.value = 0) +
@@ -207,8 +207,7 @@ server <- function(input, output, session) {
         theme(legend.position = "none", 
               panel.border = element_rect(colour = "forestgreen", 
                                           fill = NA, 
-                                          linewidth = 1),
-              text = element_text(family = "Lucida Sans Unicode", size = 14)
+                                          linewidth = 1)
               ) +
         #ggtitle(paste("So weit ist", input$benutzerinnenname, "schon:")) +
         coord_fixed(ratio = 1)
