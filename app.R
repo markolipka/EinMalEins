@@ -199,7 +199,7 @@ server <- function(input, output, session) {
                              limits = c(0, 1),
                              na.value = "snow") +
         geom_text(aes(alpha = mittl_dauer), 
-                   size = 15, label = "\u23f1") +
+                   size = 15, label = "\u23f1", family = "Helvetica") +
         scale_alpha_continuous(limits = c(3, 10), range = c(0, 1),
                                oob = scales::squish, 
                                na.value = 0) +
