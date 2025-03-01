@@ -198,8 +198,8 @@ server <- function(input, output, session) {
                              midpoint = .5,
                              limits = c(0, 1),
                              na.value = "snow") +
-        geom_point(aes(alpha = mittl_dauer), 
-                   size = 15, shape = "⏱", family = "Lucida Sans Unicode") +
+        geom_text(aes(alpha = mittl_dauer), 
+                   size = 15, label = "⏱", family = "Lucida Sans Unicode") +
         scale_alpha_continuous(limits = c(3, 10), range = c(0, 1),
                                oob = scales::squish, 
                                na.value = 0) +
