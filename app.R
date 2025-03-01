@@ -208,7 +208,7 @@ server <- function(input, output, session) {
               panel.border = element_rect(colour = "forestgreen", 
                                           fill = NA, 
                                           linewidth = 1),
-              text = element_text(family = "Garamond", size = 14)
+              text = element_text(family = "Lucida Sans Unicode", size = 14)
               ) +
         #ggtitle(paste("So weit ist", input$benutzerinnenname, "schon:")) +
         coord_fixed(ratio = 1)
