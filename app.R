@@ -3,6 +3,7 @@ library(shinyjs)
 library(tidyverse)
 library(babynames)
 library(jpeg)
+library(Unicode)
 
 pseudoname <- babynames %>% slice_sample(n = 1) %>% pull(name)
 
