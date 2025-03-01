@@ -1,6 +1,10 @@
 library(shiny)
 library(shinyjs)
 library(tidyverse)
+library(babynames)
+library(jpeg)
+
+pseudoname <- babynames %>% slice_sample(n = 1) %>% pull(name)
 
 richtig_feedback_text <- c("Richtig!",
                            "Genau!",
@@ -15,7 +19,7 @@ richtig_feedback_text <- c("Richtig!",
                            "Wunderbar!",
                            "Bravo!!",
                            "Supidupi!",
-                           "Superkalifragelistik-\nexpialigetisch!!",
+                           "Superkalifragelistikexpialigetisch!!",
                            "Ganz toll!",
                            "Sehr gut!!",
                            "Sehr schön!",
@@ -23,148 +27,105 @@ richtig_feedback_text <- c("Richtig!",
                            "Hervorragend!",
                            "Spitze!",
                            "Supi!!!")
-richtig_feedback_symbol <- c("🎉",
-                             "✅", 
-                             "✨",
-                             "😁",
-                             "😃",
-                             "😄",
-                             "😉",
-                             "😍",
-                             "😘",
-                             "😻",
-                             "🚀",
-                             "⭐",
-                             "🌈",
-                             "🌟",
-                             "🌸",
-                             "🍓",
-                             "🍡",
-                             "🍩",
-                             "🍪",
-                             "🍫",
-                             "🍬",
-                             "🍭",
-                             "🍰",
-                             "🎁",
-                             "🎆",
-                             "🎈",
-                             "🎊",
-                             "🐒",
-                             "🐛",
-                             "🐠",
-                             "🐥")
+richtig_feedback_symbol <- c("🎉", "✅", "✨",
+                             "😁", "😃", "😄", "😉","😍", "😘", "😻",
+                             "🚀", "⭐", "🌈", "🌟", "🌸", "🍓", "🍡",
+                             "🍩", "🍪", "🍫", "🍬", "🍭", "🍰", "🎁",
+                             "🎆", "🎈", "🎊", "🐒", "🐛", "🐠", "🐥")
 
 alleAufgaben <- expand_grid(a = 0:10, b = 0:10)
 
-calc_log_stat <- function(){
-  
-  log <- read.csv(file = "log.csv") |>
-    mutate(aufgabe = paste(a, " ⋅ ", b, " ="),
-           zeitstempel = as_datetime(zeitstempel),
-           zeitstempel_geklickt = as_datetime(zeitstempel_geklickt),
-           dauer = as.numeric(zeitstempel_geklickt - zeitstempel)) |>
-    # nur die letzten 5 Antworten jeder Aufgabe berücksichtigen:
-    group_by(aufgabe) |>
-    mutate(n_Aufgabe = row_number()) |>
-    slice_max(n_Aufgabe, n = 5) |> 
-    ungroup()
-  log_stat <- log |>
-    left_join(x = alleAufgaben, y = _, by = c("a", "b")) |>
-    summarise(trefferquote = mean(richtig),
-              mittl_dauer = median(dauer),
-              .by = c(a, b))
-}
-
 # UI
-ui <- fluidPage(
+ui <- fillPage(
   useShinyjs(),
  # titlePanel("Kleines 1x1 üben"),
-  sidebarLayout(
-    sidebarPanel(width = 5,
-      h1("Hi Neli!"),
-      h1(textOutput("task")),
-      br(),
-      h3(textOutput("feedback")),
-      br(),
-      plotOutput("statPlot")
-    ),
-    mainPanel(width = 7,
-      h4("Wähle die richtige Antwort:"),
-      fluidRow(
-        actionButton("btn_0", "0", style = "width: 50px; height: 50px; margin: 2px; background-color: lightgray;"),
-        br()
-      ),
-      #fluidRow(
-        lapply(0:9, function(i) {
-          fluidRow(
-            lapply(1:10, function(j) {
-              num <- i * 10 + j
-              actionButton(
-                inputId = paste0("btn_", num),
-                label = num,
-                style = "width: 50px; height: 50px; margin: 2px; background-color: lightgray;"
-              )
-            })
-          )
-        })
-     # )
-    )
+ # Zentrieren der gesamten Seite
+ div(style = "display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh;", 
+     
+  inputPanel(
+    actionButton("newTask", label = "Eine neue Aufgabe!"),
+    h1(textOutput("task")),
+  ),
+    h2(textOutput("feedback")),
+  fillRow(
+    uiOutput("dynamicUI", fill = TRUE)
   )
+ )
 )
 
 # Server
 server <- function(input, output, session) {
-
-  output$statPlot <- renderPlot({
-    task()
-    update_plot()
+  
+  name <- reactiveVal(NULL)  # Speichert den eingegebenen Namen
+  
+  # Zeige den Dialog nur beim Start
+  observeEvent(TRUE, {
+    showModal(modalDialog(
+      title = "Hi! Wer bist du?",
+      textInput("benutzerinnenname", label = NULL, value = pseudoname),
+      footer = modalButton("OK"),
+      size = "l"
+    ))
     
-    log_stat <- calc_log_stat()
-    
-    if(all(is.na(log_stat$trefferquote))){return(NA)}
-    
-    if(all(log_stat$trefferquote == 1, na.rm = TRUE) & all(!is.na(log_stat$trefferquote))){
-      random_image_file <- list.files(path = "images/",
-                                      pattern = "\\.jpeg$") |>
-        sample(size = 1)
-      library(jpeg)
-      img <- jpeg::readJPEG(source = file.path("images", random_image_file))
-      # plot with picture as layer
-      ggplot() +
-        annotation_raster(img, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf)
-    }else{
-    ggplot(log_stat) +
-      aes(x = a, y = b, fill = trefferquote, color = mittl_dauer) +
-      geom_tile(alpha = 1) +
-      scale_fill_gradient2(low = "coral",
-                           mid =  "gold", 
-                           high = "forestgreen",
-                           midpoint = .5,
-                           limits = c(0, 1),
-                           na.value = "white") +
-      geom_point(aes(alpha = mittl_dauer), size = 4) +
-      scale_color_gradient(low = "forestgreen", 
-                            high =  "pink", 
-                           limits = c(0, 50),
-                           na.value = "white") +
-      theme_void() +
-      theme(legend.position = "none")
-    }
+    update_stats(Sys.time())
+    output$dynamicUI <- renderUI({
+      plotOutput("statPlot", height = "100vh") # volle Screen-Höhe ausnutzen
+    })
+  }, once = TRUE)  # `once = TRUE`, damit die Abfrage nur am Anfang kommt
+  
+  
+  
+  output$buttonGrid <- renderUI({
+    fillPage(
+      div(style = "text-align: center;", 
+      h4("Wähle die richtige Antwort:"),
+          fluidRow(
+            actionButton("btn_0", "0",
+                         style = "width: 50px; height: 50px; margin: 2px; background-color: lightgray;")
+          ),
+          lapply(0:9, function(i) {
+            fluidRow(
+              lapply(1:10, function(j) {
+                num <- i * 10 + j
+                actionButton(
+                  inputId = paste0("btn_", num),
+                  label = num,
+                  style = "width: 50px; height: 50px; margin: 2px; background-color: lightgray;"
+                )
+              })
+            )
+          })
+      )
+    )
   })
   
-  update_plot <- reactiveVal(Sys.time())
+  log_stat <- reactive({
+    update_stats()
+    
+    log <- read.csv(file = "log.csv") |>
+      filter(benutzerinnenname == input$benutzerinnenname) |>
+      mutate(aufgabe = paste(a, " ⋅ ", b, " ="),
+             zeitstempel = as_datetime(zeitstempel),
+             zeitstempel_geklickt = as_datetime(zeitstempel_geklickt),
+             dauer = as.numeric(zeitstempel_geklickt - zeitstempel)) |>
+      # nur die letzten 5 Antworten jeder Aufgabe berücksichtigen:
+      group_by(aufgabe) |>
+      mutate(n_Aufgabe = row_number()) |>
+      slice_max(n_Aufgabe, n = 5) |> 
+      ungroup()
+    log |>
+      left_join(x = alleAufgaben, y = _, by = c("a", "b")) |>
+      summarise(trefferquote = mean(richtig),
+                mittl_dauer = median(dauer),
+                .by = c(a, b))
+  })
   
-  task <- reactiveVal(list(timestamp = lubridate::now(),
-                           a = 0, 
-                           b = 0, 
-                           result = 0))
-  
-  generateTask <- function() {
-    log_stat <- calc_log_stat()
-                  
+  observeEvent(input$newTask, {
+    
+    naechstes_huebsches_bild(sample(list.files("images/", pattern = "\\.jpeg$"), 1))
+    
     # Zufallsziehung einer Aufgabe mit Gewichten:
-    aufgabe <- log_stat |>
+    aufgabe <- log_stat() |>
       mutate(trefferquote = replace_na(trefferquote, 0),
              mittl_dauer = replace_na(mittl_dauer, 99)) |>
       ## erstmal vällig zufällige Aufgaben ziehen:
@@ -179,19 +140,86 @@ server <- function(input, output, session) {
               a = aufgabe$a,
               b = aufgabe$b,
               result = aufgabe$r))
-  }
+    
+    output$task <- renderText({
+      paste(task()$a, "⋅", task()$b, "= ＿")
+    })
+    
+    output$feedback <- renderText("😊")
+    
+    output$dynamicUI <- renderUI({
+      uiOutput("buttonGrid")
+    })
+    
+    # lapply(0:100, function(n) {
+    #   runjs(sprintf("$('#btn_%s').css('background-color', 'lightgray');", n))
+    # })
+  })
   
-  generateTask()
+  update_stats <- reactiveVal(Sys.time())
   
-  output$task <- renderText({
-    paste(task()$a, "⋅", task()$b, "= ＿＿＿")
+  
+  task <- reactiveVal(list(timestamp = lubridate::now(),
+                           a = 0, 
+                           b = 0, 
+                           result = 0)
+                      )
+  
+  naechstes_huebsches_bild <- reactiveVal(sample(list.files("images/", pattern = "\\.jpeg$"), 1))
+  
+
+  # Status-Plot generieren:
+  output$statPlot <- renderPlot({
+   
+    log_stat <- log_stat()
+    
+    ## leere Plot, wenn noch keine Ergebnisse im Log:
+   # if(all(is.na(log_stat$trefferquote))){return(NA)}
+    
+    ## Hübsches Bild, falls Ziel-Trefferquote erreicht: 
+    if(all(log_stat$trefferquote == 1, na.rm = TRUE) & 
+       all(!is.na(log_stat$trefferquote))){
+      
+      # Verwende das bereits vorbereitete Bild
+      img <- readJPEG(file.path("images", naechstes_huebsches_bild()))
+      
+      # plot with picture as layer
+      ggplot() +
+        annotation_raster(img, xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf) +
+        coord_fixed(ratio = 1)
+    }else{
+      ## Ansonsten die Status-Matrix:
+      ggplot(log_stat) +
+        aes(x = a, y = b, fill = trefferquote) +
+        geom_tile(alpha = .8) +
+        scale_fill_gradient2(low = "darkred",
+                             mid =  "gold", 
+                             high = "forestgreen",
+                             midpoint = .5,
+                             limits = c(0, 1),
+                             na.value = "snow") +
+        geom_point(aes(alpha = mittl_dauer), 
+                   size = 15, shape = "⏱") +
+        scale_alpha_continuous(limits = c(3, 10), range = c(0, 1),
+                               oob = scales::squish, 
+                               na.value = 0) +
+        theme_void() +
+        theme(legend.position = "none", 
+              panel.border = element_rect(colour = "forestgreen", 
+                                          fill = NA, 
+                                          linewidth = 1)
+              ) +
+        #ggtitle(paste("So weit ist", input$benutzerinnenname, "schon:")) +
+        coord_fixed(ratio = 1)
+    }
   })
   
   observe({
     lapply(0:100, function(num) {
       observeEvent(input[[paste0("btn_", num)]], {
         ### log Eingabe:
-        data.frame(ts_gen = task()$timestamp,
+        data.frame(benutzerinnenname = input$benutzerinnenname,
+                   ts_gen = task()$timestamp,
                    a = task()$a,
                    b = task()$b,
                    result = task()$result,
@@ -200,26 +228,37 @@ server <- function(input, output, session) {
                    task()$result == num) |>
           write.table(file = "log.csv", sep = ",", 
                       append = TRUE, 
-                    row.names = FALSE, col.names = FALSE)
+                      row.names = FALSE, col.names = FALSE)
         
         btn_id <- paste0("btn_", num)
-        if (num == task()$result) {
+        if (num == task()$result) { # fall richtiges Ergebnis geklickt:
+          ## zufälliges, positives Feedback wählen:
           output$feedback <- renderText(paste(sample(richtig_feedback_symbol, size = 1),
                                               sample(richtig_feedback_text, size = 1),
                                               sample(richtig_feedback_symbol, size = 1),
                                               collapse = " "))
-          runjs(sprintf("$('#%s').css('background-color', 'lightgreen');", btn_id))
-          Sys.sleep(1)
-          generateTask()
-          lapply(0:100, function(n) {
-            runjs(sprintf("$('#btn_%s').css('background-color', 'lightgray');", n))
+          ## geklickten Button grün färben:
+         # runjs(sprintf("$('#%s').css('background-color', 'lightgreen');", btn_id))
+          
+          ## Angezeigte Aufgabe mit korrektem Ergebnis anreichern:
+          output$task <- renderText({
+            paste(task()$a, "⋅", task()$b, "= ", num)
           })
-        } else {
+          
+          update_stats(Sys.time())
+          output$dynamicUI <- renderUI({
+              plotOutput("statPlot", height = "80vh") # volle Screen-Höhe ausnutzen
+          })
+          
+        } else { # falls ein falsches Ergebnis geklickt:
           output$feedback <- renderText("Das war nicht richtig. Versuch es nochmal!")
           runjs(sprintf("$('#%s').css('background-color', 'lightcoral');", btn_id))
           Sys.sleep(1)
           runjs(sprintf("$('#%s').css('background-color', 'lightgray');", btn_id))
-          update_plot(Sys.time())
+          
+          output$dynamicUI <- renderUI({
+            uiOutput("buttonGrid")
+          })
         }
       })
     })
