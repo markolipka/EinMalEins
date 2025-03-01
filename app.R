@@ -107,17 +107,36 @@ server <- function(input, output, session) {
       mutate(aufgabe = paste(a, " ⋅ ", b, " ="),
              zeitstempel = as_datetime(zeitstempel),
              zeitstempel_geklickt = as_datetime(zeitstempel_geklickt),
-             dauer = as.numeric(zeitstempel_geklickt - zeitstempel)) |>
-      # nur die letzten 5 Antworten jeder Aufgabe berücksichtigen:
+             dauer = as.numeric(zeitstempel_geklickt - zeitstempel))
+    
+    aufgaben_je_minute <- log |>
+      arrange(desc(zeitstempel_geklickt)) |>
+      slice_head(n = 100) |>
+      mutate(cumsum_dauer = cumsum(dauer)) |>
+      filter(cumsum_dauer <= 60)
+    
+    ## nur wenn bereits mehr als 20 Aufgaben im Log sind, jeMinute-Anzahl ausgeben:
+    n_aufgaben_je_minute <- if_else(nrow(log) >= 20,
+                                    nrow(aufgaben_je_minute), 
+                                    NA_integer_)
+    
+      # Für die Stats nur die letzten 5 Antworten jeder Aufgabe berücksichtigen:
+    log_last5 <- log |>
       group_by(aufgabe) |>
       mutate(n_Aufgabe = row_number()) |>
       slice_max(n_Aufgabe, n = 5) |> 
       ungroup()
-    log |>
+    
+    
+    
+    aufgabenstats <- log_last5 |>
       left_join(x = alleAufgaben, y = _, by = c("a", "b")) |>
       summarise(trefferquote = mean(richtig),
                 mittl_dauer = median(dauer),
                 .by = c(a, b))
+    
+    list(Astats = aufgabenstats,
+         ProMinute = n_aufgaben_je_minute)
   })
   
   observeEvent(input$newTask, {
@@ -125,7 +144,7 @@ server <- function(input, output, session) {
     naechstes_huebsches_bild(sample(list.files("images/", pattern = "\\.jpeg$"), 1))
     
     # Zufallsziehung einer Aufgabe mit Gewichten:
-    aufgabe <- log_stat() |>
+    aufgabe <- log_stat()$Astats |>
       mutate(trefferquote = replace_na(trefferquote, 0),
              mittl_dauer = replace_na(mittl_dauer, 99)) |>
       ## erstmal vällig zufällige Aufgaben ziehen:
@@ -145,7 +164,7 @@ server <- function(input, output, session) {
       paste(task()$a, "⋅", task()$b, "= ＿")
     })
     
-    output$feedback <- renderText("😊")
+    output$feedback <- renderText(". . .")
     
     output$dynamicUI <- renderUI({
       uiOutput("buttonGrid")
@@ -171,7 +190,7 @@ server <- function(input, output, session) {
   # Status-Plot generieren:
   output$statPlot <- renderPlot({
    
-    log_stat <- log_stat()
+    log_stat <- log_stat()$Astats
     
     ## leere Plot, wenn noch keine Ergebnisse im Log:
    # if(all(is.na(log_stat$trefferquote))){return(NA)}
@@ -199,10 +218,11 @@ server <- function(input, output, session) {
                              limits = c(0, 1),
                              na.value = "snow") +
         geom_text(aes(alpha = mittl_dauer), 
-                   size = 15, label = "\u23f1"#, 
-                  #family = "Symbola"
-                  ) +
-        scale_alpha_continuous(limits = c(3, 10), range = c(0, 1),
+                   size = 10, label = "\u23f1") +
+        ## Ziel der Lehrerin ist, 20 Aufgaben aus dem kleinen 1x1 in einer Minute zu schaffen
+        ## Das macht also im Schnitt 3 Sekunden je Aufgabe: 
+        scale_alpha_continuous(limits = c(3, 10), 
+                               range = c(0, 1),
                                oob = scales::squish, 
                                na.value = 0) +
         theme_void() +
@@ -238,6 +258,17 @@ server <- function(input, output, session) {
                                               sample(richtig_feedback_text, size = 1),
                                               sample(richtig_feedback_symbol, size = 1),
                                               collapse = " "))
+          ## Bonus-Feedback, wenn die magische MArke von 20 Aufgaben pro Minute geknackt wurde:
+          Aufgaben_pro_Minute <- log_stat()$ProMinute |> replace_na(0)
+          if(Aufgaben_pro_Minute >= 20){
+            output$feedback <- renderText(paste("🚀⭐⭐⭐🚀",
+                                                "Wahnsinn!! Du bist Raketenschnell!!",
+                                                "🚀⭐⭐⭐🚀",
+                                                Aufgaben_pro_Minute, "Aufgaben pro Minute!!",
+                                                "🚀⭐⭐⭐🚀"
+                                                ))
+          }
+          
           ## geklickten Button grün färben:
          # runjs(sprintf("$('#%s').css('background-color', 'lightgreen');", btn_id))
           
