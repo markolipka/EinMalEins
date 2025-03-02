@@ -164,7 +164,7 @@ server <- function(input, output, session) {
       paste(task()$a, "⋅", task()$b, "= ＿")
     })
     
-    output$feedback <- renderText(". . .")
+    output$feedback <- renderText("\u23f1 Die Zeit läuft ...")
     
     output$dynamicUI <- renderUI({
       uiOutput("buttonGrid")
@@ -211,7 +211,7 @@ server <- function(input, output, session) {
       ggplot(log_stat) +
         aes(x = a, y = b, fill = trefferquote) +
         geom_tile(alpha = .8) +
-        scale_fill_gradient2(low = "darkred",
+        scale_fill_gradient2(low = "red",
                              mid =  "gold", 
                              high = "forestgreen",
                              midpoint = .5,
@@ -231,6 +231,7 @@ server <- function(input, output, session) {
                                           fill = NA, 
                                           linewidth = 1)
               ) +
+        ggtitle(paste0(input$benutzerinnenname, "'s Fortschritt:")) +
         coord_fixed(ratio = 1)
     }
   })
