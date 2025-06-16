@@ -4,6 +4,8 @@ library(tidyverse)
 library(babynames)
 library(jpeg)
 
+options(error = traceback) # um beim Fehler eine Rückverfolgung zu bekommen.
+
 pseudoname <- babynames %>% slice_sample(n = 1) %>% pull(name)
 
 richtig_feedback_text <- c("Richtig!",
